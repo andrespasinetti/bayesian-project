@@ -1,6 +1,7 @@
 # This code is implementing the paper:
 # Bayesian Methods for Hidden Markov Models: Recursive Computing in the 21st Century - Author(s): Steven L. Scott
 
+
 # PARAMETERS
 H <- 4 # number of hidden states
 C <- 8 # number of gaussians for each mixture
@@ -78,7 +79,6 @@ for (i in 1:LENGTH) {
   y_plot <- c(y_plot, MIXTURES[h_real[i], ])
 
   plot3d(x, MIXTURES[h_real[i], ], rep(i, length(x)), type = "l", lwd = 4, col = h_real[i], zlim = c(1, LENGTH))
-
 }
 
 
