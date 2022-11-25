@@ -3,8 +3,8 @@
 
 
 # PARAMETERS
-H <- 4 # number of hidden states
-C <- 8 # number of gaussians for each mixture
+H <- 2 # number of hidden states
+C <- 3 # number of gaussians for each mixture
 alpha_0 <- runif(n = C, min = 1, max = 4)
 mu_0 <- 0
 tau_0 <- 0.02 # precision
@@ -67,8 +67,6 @@ for (i in 1:H) {
 print(dim(MIXTURES))
 
 
-
-
 library(plotly)
 z_plot <- c()
 y_plot <- c()
@@ -80,11 +78,6 @@ for (i in 1:LENGTH) {
 
   plot3d(x, MIXTURES[h_real[i], ], rep(i, length(x)), type = "l", lwd = 4, col = h_real[i], zlim = c(1, LENGTH))
 }
-
-
-
-#plot3d(x_plot, y_plot, z_plot, type = "l", size = 1, col = "blue", zlim = c(1, LENGTH))
-#sapply(2:5, function(i) plot3d(coords[[i]],add = TRUE,type = "l", col = "blue"))
 #grid3d(c("x", "y+", "z"))
 
 
