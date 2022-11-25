@@ -2,7 +2,7 @@
 
 
 # PARAMETERS
-H <- 2 # number of hidden states
+H <- 4 # number of hidden states
 C <- 3 # number of gaussians for each mixture
 alpha_0 <- runif(n = C, min = 1, max = 4)
 mu_0 <- 0
@@ -49,7 +49,7 @@ seq_mixtures <- function(n, Q, H) {
 h_real <- seq_mixtures(n = LENGTH, Q, H)
 print(h_real)
 
-# Plotting
+# Generating the mixtures
 x <- seq(-20, 20, by = 0.001)
 MIXTURES <- matrix(, nrow = H, ncol = length(x))
 norms <- data.frame(x)
@@ -65,6 +65,7 @@ for (i in 1:H) {
 print(dim(MIXTURES))
 
 
+# Plotting
 library(plotly)
 z_plot <- c()
 y_plot <- c()
