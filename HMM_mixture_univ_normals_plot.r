@@ -1,5 +1,4 @@
-# This code is implementing the paper:
-# Bayesian Methods for Hidden Markov Models: Recursive Computing in the 21st Century - Author(s): Steven L. Scott
+# This code is plotting an Hidden Markov Model with each observation generated from a mixture of univariate gaussians
 
 
 # PARAMETERS
@@ -50,7 +49,7 @@ seq_mixtures <- function(n, Q, H) {
 h_real <- seq_mixtures(n = LENGTH, Q, H)
 print(h_real)
 
-
+# Plotting
 x <- seq(-20, 20, by = 0.001)
 MIXTURES <- matrix(, nrow = H, ncol = length(x))
 norms <- data.frame(x)
