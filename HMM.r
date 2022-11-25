@@ -59,7 +59,6 @@ for (i in 1:H) {
   norms <- data.frame(x)
   for (c in 1:C) {
     norms <- cbind(norms, dnorm(x, MU_REAL[i, c], sqrt(1 / TAU_REAL[i, c])) * W_REAL[i, c])
-    #col_names <- c(col_names, paste("norm", i, sep = ""))
   }
   norms_matrix <- data.matrix(norms[2:length(norms)])
   MIXTURES[i, ] <- rowSums(norms_matrix)
