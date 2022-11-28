@@ -66,7 +66,7 @@ print(dim(MIXTURES))
 
 
 # Plotting
-library(plotly)
+library(rgl)
 z_plot <- c()
 y_plot <- c()
 x_plot <- c()
