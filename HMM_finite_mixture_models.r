@@ -9,8 +9,8 @@ tau_0 <- 0.02 # precision
 a_0 <- 5
 b_0 <- 5
 
-LENGTH <- 1000 # length of the chain
-niter <- 200 # number of Gibbs Sampling iterations
+LENGTH <- 100 # length of the chain
+niter <- 100 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
@@ -72,7 +72,7 @@ plot_HMM_samples <- function(x, d, h_real, LENGTH) {
   }
   #grid3d(c("x", "y+", "z"))
 }
-#plot_HMM_samples(x, d, h_real, LENGTH)
+plot_HMM_samples(x, d, h_real, LENGTH)
 
 
 # Full conditionals
@@ -111,10 +111,13 @@ sample_tau <- function(mu, h, x, a_0, b_0, N, H, LENGTH) {
 
 sample_mu <- function(tau, z, x, tau_0, mu_0, N) {
   mu <- c()
+
   for (c in 1:length(tau)) {
+    # to prevent division by 0
     if (N[c] == 0) {
       N[c] <- 1
     }
+
     delta <- N[c] * tau[c] / (tau_0 + N[c] * tau[c])
     x_bar <- (z[, c] %*% x) / N[c]
     mu <- c(mu, rnorm(1, delta * x_bar + (1 - delta) * mu_0, sqrt(1 / (tau_0 + N[c] * tau[c]))))
@@ -123,19 +126,16 @@ sample_mu <- function(tau, z, x, tau_0, mu_0, N) {
 }
 
 
+# Forward-Backward 
 sample_h <- function(d, Q, mu, tau, LENGTH, H) {
-  # Forward-Backward Gibbs
   # Forward recursion
   P <- array(0, dim = c(H, H, LENGTH))
-  pi <- matrix(, nrow = LENGTH, ncol = H)
-  pi[1, ] <- 0
+  pi <- matrix(0, nrow = LENGTH, ncol = H)
   pi[1, 1] <- 1
   for (t in 2:LENGTH) {
     for (r in 1:H) {
       for (s in 1:H) {
-        #print(dnorm(d[t], mu[s], tau[s]))
-        P[r, s, t] <- pi[t - 1, r] * Q[r, s] * dnorm(d[t], mu[s], tau[s])
-        
+        P[r, s, t] <- pi[t - 1, r] * Q[r, s] * dnorm(d[t], mu[s], tau[s])        
       }
     }
     #print(sum(P[, , t]))
@@ -145,7 +145,6 @@ sample_h <- function(d, Q, mu, tau, LENGTH, H) {
     } else {
       P[, , t] <- P[, , t] / summation
     }
-    
 
     for (s in 1:H) {
       pi[t, s] <-  sum(P[, s, t])
@@ -154,8 +153,14 @@ sample_h <- function(d, Q, mu, tau, LENGTH, H) {
   #print(P)
   # Backward recursion
   h <- sample(1:H, prob = pi[LENGTH, ], size = 1)
-  for (i in LENGTH - 1:1) {
-    h <- c(sample(1:H, prob = P[, h[length(h)], i + 1], size = 1), h)
+  for (i in (LENGTH - 1):1) {
+    if (sum(P[, h[length(h)], i + 1]) == 0) {
+      prob <- rep(1 / H, H)
+    } else {
+      prob <- P[, h[length(h)], i + 1]
+    }
+    #print(P[, , i+1])
+    h <- c(sample(1:H, prob = prob, size = 1), h)
   }
   return(h)
 }
@@ -200,11 +205,13 @@ gibbs <- function(d, niter, H, alpha_0, mu_0, tau_0, a_0, b_0, LENGTH) {
     h <- sample_h(d, Q, mu, tau, LENGTH, H)
     mu_GS[i, ] <- mu
   }
-  print(Q)
+  #print(Q)
+  #print(h)
   return(mu_GS)
 }
 
 mu_GS <- gibbs(d, niter, H, alpha_0, mu_0, tau_0, a_0, b_0, LENGTH)
-#print(mean(mu_GS))
+#print(mu_GS)
+print(mu_real)
 x11()
 matplot(mu_GS, main="Markov Chain for mu", type = 'l', xlim = c(0, niter), lty = 1, lwd = 2)
