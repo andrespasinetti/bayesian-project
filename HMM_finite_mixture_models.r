@@ -1,5 +1,7 @@
-# This code is implementing a finite mixture model as a particular case of HMMs, as explained in the paper:
+# This code is combining the following two papers
 # Bayesian Methods for Hidden Markov Models: Recursive Computing in the 21st Century - Author(s): Steven L. Scott
+# Gibbs Sampling for Bayesian Finite Mixtures of Normal Distributions - Cristina Mollica, Luca Tardella
+
 
 # PARAMETERS
 H <- 2 # number of hidden states
