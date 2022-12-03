@@ -11,8 +11,8 @@ tau_0 <- 0.02 # precision
 a_0 <- 5
 b_0 <- 5
 
-N <- 2000 # number of samples
-niter <- 200 # number of Gibbs Sampling iterations
+nsamples <- 2000 # number of samples
+niter <- 300 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
@@ -25,12 +25,12 @@ cat("tau_real :", tau_real, "\n")
 
 
 # Sampling from the unknown distribution
-rmix <- function(n, w_real, mu_real, tau_real) {
-  z <- sample(1:length(w_real), prob = w_real, size = n, replace = TRUE)
-  x <- rnorm(n, mu_real[z], sqrt(1 / tau_real[z]))
+rmix <- function(nsamples, w_real, mu_real, tau_real) {
+  z <- sample(1:length(w_real), prob = w_real, size = nsamples, replace = TRUE)
+  x <- rnorm(nsamples, mu_real[z], sqrt(1 / tau_real[z]))
   return(x)
 }
-x <- rmix(n = N, w_real, mu_real, tau_real)
+x <- rmix(nsamples = nsamples, w_real, mu_real, tau_real)
 
 
 # Plotting
@@ -54,7 +54,7 @@ plot_mixture <- function(x, w, mu, tau, title) {
   library(ggplot2)
   line_sizes <- rep(0.6, C + 1)
   line_sizes[1] <- 2
-  line_colors <- rep(1, C + 1) 
+  line_colors <- rep(1, C + 1)
   line_colors[1] <- 2
   ggp <- ggplot(long_norms) + 
         geom_line(aes(x, value, col = name, size = name)) + 
@@ -121,6 +121,7 @@ sample_z <- function(mu, tau, w, x) {
     for (c in 1:length(mu)) {
       summation <- summation + w[c] * dnorm(x[i], mu[c], sqrt(1 / tau[c]))
     }
+    # avoid division by 0
     if (summation != 0) {
       for (c in 1:length(mu)) {
         prob <- c(prob, w[c] * dnorm(x[i], mu[c], sqrt(1 / tau[c])) / summation)
@@ -136,6 +137,7 @@ sample_z <- function(mu, tau, w, x) {
 
 # Gibbs Sampler
 gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
+  # Initialize the Markov Chain
   w <- gtools::rdirichlet(1, alpha_0)
   tau <- rgamma(C, shape = a_0, rate = b_0)
   mu <- rnorm(C, mu_0, sqrt(1 / tau_0))
@@ -143,22 +145,28 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
   for (i in 1:length(x)) {
     z[i, ] <- rmultinom(1, 1, w)
   }
+
+  # Save the Markov Chain of mu
   mu_GS <- matrix(, nrow = length(x), ncol = length(mu))
   mu_GS[1, ] <- mu
 
+  cat("\nGibbs Sampling\n")
   cat(0, "/", niter, "\n")
   for (i in 1:niter) {
     if (i %% 50 == 0) {
       cat(i, "/", niter, "\n")
     }
+
     N <- c()
     for (c in 1:C) {
       N <- c(N, sum(z[, c]))
     }
+
     w <- sample_w(alpha_0, N)
     tau <- sample_tau(mu, z, x, a_0, b_0, N)
     mu <- sample_mu(tau, z, x, tau_0, mu_0, N)
     z <- sample_z(mu, tau, w, x)
+
     mu_GS[i, ] <- mu
   }
 
