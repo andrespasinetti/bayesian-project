@@ -112,42 +112,41 @@ sample_tau <- function(mu, z, x, c_0, C_0, N) {
   for (i in 1:N_SAMPLES) {
     k[i] <- which.max(z[i, ])
   }
-  z <- k
   for (c in 1:C) {
-    summation <- t(sweep(x[z == c, ], p, mu[c, ], "-")) %*% (sweep(x[z == c, ], p, mu[c, ], "-"))
+    summation <- t(sweep(x[k == c, ], p, mu[c, ], "-")) %*% (sweep(x[k == c, ], p, mu[c, ], "-"))
     c_new <- c_0 + N[c] / 2
     C_new <- C_0 + summation / 2
-    tau <- c(tau, rWishart(C, c_new, solve(C_new)))
+    tau <- rWishart(C, c_new, solve(C_new))
   }
-
   return(tau)
 }
 
 sample_mu <- function(tau, z, x, b_0, B_0, N) {
   mu <- matrix(, nrow = C, ncol = p)
   for (c in 1:C) {
-
-    B_new <- solve(solve(B_0) + N[c] * tau)
-    c_one <- rep(0, C)
-    c_one[c] <- 1
+    B_new <- solve(solve(B_0) + N[c] * tau[, , c])
+    k <- array(0, dim = N_SAMPLES)
+    for (i in 1:N_SAMPLES) {
+      k[i] <- which.max(z[i, ])
+    }
 
     # avoid divison by 0
     if (N[c] == 0) {
       N[c] <- 1
     }
-    b_new <- (B_new) %*% (solve(B_0) %*% b_0 + N[c] * (tau %*% apply(x[z == c_one,], p, sum)/N[c]))
-    mu <- c(mu, rmvnorm(C, b_new, B_new))
+    b_new <- (B_new) %*% (solve(B_0) %*% b_0 + N[c] * (tau[, , c] %*% apply(x[k == c,], p, sum)/N[c]))
+    mu[c, ] <- rmvnorm(C, b_new, B_new)
   }
   return(mu)
 }
 
 sample_z <- function(mu, tau, w, x) {
-  z <- matrix(, nrow = length(x), ncol = length(w))
+  z <- matrix(, nrow = N_SAMPLES, ncol = C)
   for (i in 1:N_SAMPLES) {
     prob <- c()
     summation <- 0
     for (c in 1:C) {
-      summation <- summation + w[c] * dmvnorm(x[i], mu[c], solve(tau[, , c]))
+      summation <- summation + w[c] * dmvnorm(x[i, ], mu[c, ], solve(tau[, , c]))
     }
     # avoid division by 0
     if (summation != 0) {
@@ -157,6 +156,7 @@ sample_z <- function(mu, tau, w, x) {
     } else {
       prob <- runif(n = C, min = 0, max = 1)
     }
+    print("-----")
     z[i, ] <- rmultinom(1, 1, prob)
   }
   return(z)
@@ -179,9 +179,9 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
 
   mu <- matrix(, nrow = C, ncol = p)
   tau <- array(0, dim = c(p, p, C))
-  tau <- rWishart(C, c_0, solve(C_0))
+  tau[, , ]  <- rWishart(C, c_0, solve(C_0))
   mu <- rmvnorm(C, b_0, B_0)
-  z <- matrix(, nrow = dim(x)[1], ncol = length(w))
+  z <- matrix(, nrow = N_SAMPLES, ncol = C)
   for (i in 1:N_SAMPLES) {
     z[i, ] <- rmultinom(1, 1, w)
   }
