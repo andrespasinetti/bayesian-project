@@ -108,12 +108,9 @@ sample_w <- function(alpha_0, N) {
 
 sample_tau <- function(mu, z, x, c_0, C_0, N) {
   tau <- array(, dim = c(p, p, C))
-  k <- array(0, dim = N_SAMPLES)
-  for (i in 1:N_SAMPLES) {
-    k[i] <- which.max(z[i, ])
-  }
+
   for (c in 1:C) {
-    summation <- t(sweep(x[k == c, ], p, mu[c, ], "-")) %*% (sweep(x[k == c, ], p, mu[c, ], "-"))
+    summation <- t(sweep(x[z == c, ], p, mu[c, ], "-")) %*% (sweep(x[z == c, ], p, mu[c, ], "-"))
     c_new <- c_0 + N[c] / 2
     C_new <- C_0 + summation / 2
     tau <- rWishart(C, c_new, solve(C_new))
@@ -125,16 +122,13 @@ sample_mu <- function(tau, z, x, b_0, B_0, N) {
   mu <- matrix(, nrow = C, ncol = p)
   for (c in 1:C) {
     B_new <- solve(solve(B_0) + N[c] * tau[, , c])
-    k <- array(0, dim = N_SAMPLES)
-    for (i in 1:N_SAMPLES) {
-      k[i] <- which.max(z[i, ])
-    }
+
 
     # avoid divison by 0
     if (N[c] == 0) {
       N[c] <- 1
     }
-    b_new <- (B_new) %*% (solve(B_0) %*% b_0 + N[c] * (tau[, , c] %*% apply(x[k == c,], p, sum)/N[c]))
+    b_new <- (B_new) %*% (solve(B_0) %*% b_0 + N[c] * (tau[, , c] %*% apply(x[z == c,], p, sum)/N[c]))
     mu[c, ] <- rmvnorm(C, b_new, B_new)
   }
   return(mu)
@@ -202,6 +196,11 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
       N <- c(N, sum(z[, c]))
     }
 
+    k <- array(0, dim = N_SAMPLES)
+    for (i in 1:N_SAMPLES) {
+      k[i] <- which.max(z[i, ])
+    }
+    z <- k
 
     w <- sample_w(alpha_0, N)
     tau <- sample_tau(mu, z, x, c_0, C_0, N)
