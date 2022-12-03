@@ -78,10 +78,10 @@ x_seq <- seq(min(d) - 2*max(tau_real), max(d)+ 2*max(tau_real), by = 0.001)
 sample_Q <- function(alpha_0, h) {
   Q <- matrix(, nrow = C, ncol = C)
   NN <- matrix(0, nrow = C, ncol = C)
-  for (z in 2:C) {
-    NN[h[z-1], h[z]] <- NN[h[z-1], h[z]] + 1
+  for (z in 2:LENGTH) {
+    NN[h[z - 1], h[z]] <- NN[h[z - 1], h[z]] + 1
   }
-    
+
   for (i in 1:C) {
     Q[i, ] <- gtools::rdirichlet(1, alpha_0 + NN[i, ])
   }
