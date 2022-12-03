@@ -12,7 +12,7 @@ a_0 <- 5
 b_0 <- diag(rep(0.05, p)) 
 
 
-N_SAMPLES <- 2000 # number of samples
+N_SAMPLES <- 100 # number of samples
 niter <- 300 # number of Gibbs Sampling iterations
 
 
@@ -35,23 +35,23 @@ print(tau_real)
 
 # Sampling from the unknown distribution
 rmix <- function(w_real, mu_real, tau_real) {
-  z <- sample(1:C, prob = w_real, size = N_SAMPLES, replace = TRUE)
+  z_real <- sample(1:C, prob = w_real, size = N_SAMPLES, replace = TRUE)
   x <- matrix(, nrow = N_SAMPLES, ncol = p)
   for (i in 1:N_SAMPLES) {
-    x[i, ] <- rmvnorm(1, mu_real[z[i], ], solve(tau_real[, , z[i]]))
+    x[i, ] <- rmvnorm(1, mu_real[z[i], ], solve(tau_real[, , z_real[i]]))
   }
   
-  return(list(x, z))
+  return(list(x, z_real))
 }
 mix <- rmix(w_real, mu_real, tau_real)
 #print(mix)
 x <- mix[1]
-z <- mix[2]
+z_real <- mix[2]
 
 x <- data.frame(x)
-z <- unlist(z)
+z_real <- unlist(z_real)
 x11()
-plot(x, type="p", col=z, pch=20)
+plot(x, type="p", col=z_real, pch=20)
 
 
 # Plotting
@@ -170,13 +170,11 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
   b_0 <- apply(x, p, median)
   B_0 <- diag((apply(x, p, max) - apply(x, p, min))^2)
 
-  
   # Initialize the Markov Chain
   w <- gtools::rdirichlet(1, alpha_0) * 0.01
 
   mu <- matrix(, nrow = C, ncol = p)
   tau <- array(0, dim = c(p, p, C))
-
   tau <- rWishart(C, c_0, solve(C_0))
   mu <- rmvnorm(C, b_0, B_0)
   z <- matrix(, nrow = dim(x)[1], ncol = length(w))
