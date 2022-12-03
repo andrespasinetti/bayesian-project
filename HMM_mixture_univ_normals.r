@@ -47,8 +47,6 @@ h_real <- HMC(Q_real)
 #print(h_real)
 
 
-
-
 # Sampling from the unknown distribution
 rmix <- function(h_real, mu_real, tau_real) {
   d <- rnorm(length(h_real), mu_real[h_real], sqrt(1 / tau_real[h_real]))
@@ -141,8 +139,9 @@ sample_h <- function(d, Q, mu, tau) {
       }
     }
     summation <- sum(P[, , t])
-    
-    # to avoid division by 0
+
+    # to reconcile proportionality
+     # to avoid division by 0
     if (summation == 0) {
       P[, , t] <- matrix(1 / C^2, nrow = C, ncol = C)
     } else {
@@ -157,10 +156,11 @@ sample_h <- function(d, Q, mu, tau) {
   # Backward recursion
   h <- sample(1:C, prob = pi[LENGTH, ], size = 1)
   for (i in (LENGTH - 1):1) {
-    if (sum(P[, h[length(h)], i + 1]) == 0) {
+    # to avoid division by 0
+    if (sum(P[, h[1], i + 1]) == 0) {
       prob <- rep(1 / C, C)
     } else {
-      prob <- P[, h[length(h)], i + 1]
+      prob <- P[, h[1], i + 1]
     }
     #print(P[, , i+1])
     h <- c(sample(1:C, prob = prob, size = 1), h)
