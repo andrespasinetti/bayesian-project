@@ -11,27 +11,23 @@ tau_0 <- 0.02 # precision
 a_0 <- 5
 b_0 <- 5
 
-LENGTH <- 100 # length of the chain
+LENGTH <- 1000 # length of the chain
 niter <- 200 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
-w_real <- gtools::rdirichlet(1, alpha_0)
-#w_real <- c(0.5, 0.5)
 mu_real <- rnorm(C, mu_0, sqrt(1 / tau_0))
 tau_real <- rgamma(C, shape = a_0, rate = b_0)
-cat("w_real :", w_real, "\n")
-cat("mu_real :", mu_real, "\n")
+cat("\nmu_real :", mu_real, "\n")
 cat("tau_real :", tau_real, "\n")
-
 
 # Transition probability matrix 
 # For finite mixture models, all rows are equal
 Q_real <- c()
 for (i in 1:C) {
-  Q_real <- rbind(Q_real, w_real)
+  Q_real <- rbind(Q_real, gtools::rdirichlet(1, alpha_0))
 }
-cat("\n Transition matrix\n")
+cat("\nTransition matrix\n")
 print(Q_real)
 
 
@@ -70,7 +66,7 @@ plot_HMM_samples <- function(x_seq, d, h_real) {
   #grid3d(c("x", "y+", "z"))
 }
 x_seq <- seq(min(d) - 2*max(sqrt(1/tau_real)), max(d)+ 2*max(sqrt(1/tau_real)), by = 0.001)
-plot_HMM_samples(x_seq, d, h_real)
+#plot_HMM_samples(x_seq, d, h_real)
 
 
 # Full conditionals
@@ -156,7 +152,6 @@ sample_h <- function(d, Q, mu, tau) {
     } else {
       prob <- P[, h[1], i + 1]
     }
-    #print(P[, , i+1])
     h <- c(sample(1:C, prob = prob, size = 1), h)
   }
   return(h)
@@ -165,7 +160,7 @@ sample_h <- function(d, Q, mu, tau) {
 
 # Gibbs Sampler
 gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
-  #b_0 <- 50
+  b_0 <- 50
 
   cat("\n\nGibbs Sampler\n")
   w <- gtools::rdirichlet(1, alpha_0)
@@ -174,7 +169,6 @@ gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
     Q <- rbind(Q, w)
   }
   tau <- rgamma(C, shape = a_0, rate = b_0)
-  print(tau)
   mu <- rnorm(C, mu_0, sqrt(1 / tau_0))
   h <- HMC(Q)
 
@@ -182,7 +176,6 @@ gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
   mu_GS[1, ] <- mu
 
   cat(0, "/", niter, "\n")
-
   for (i in 1:niter) {
     if (i %% 50 == 0) {
       cat(i, "/", niter, "\n")
@@ -201,6 +194,7 @@ gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
     h <- sample_h(d, Q, mu, tau)
     mu_GS[i, ] <- mu
   }
+  print(mu)
   print(Q)
   return(mu_GS)
 }
