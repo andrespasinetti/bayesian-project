@@ -11,7 +11,7 @@ tau_0 <- 0.02 # precision
 a_0 <- 5
 b_0 <- 5
 
-nsamples <- 2000 # number of samples
+N_SAMPLES <- 2000 # number of samples
 niter <- 300 # number of Gibbs Sampling iterations
 
 
@@ -25,12 +25,12 @@ cat("tau_real :", tau_real, "\n")
 
 
 # Sampling from the unknown distribution
-rmix <- function(nsamples, w_real, mu_real, tau_real) {
-  z <- sample(1:length(w_real), prob = w_real, size = nsamples, replace = TRUE)
-  x <- rnorm(nsamples, mu_real[z], sqrt(1 / tau_real[z]))
+rmix <- function(w_real, mu_real, tau_real) {
+  z <- sample(1:C, prob = w_real, size = N_SAMPLES, replace = TRUE)
+  x <- rnorm(N_SAMPLES, mu_real[z], sqrt(1 / tau_real[z]))
   return(x)
 }
-x <- rmix(nsamples = nsamples, w_real, mu_real, tau_real)
+x <- rmix(w_real, mu_real, tau_real)
 
 
 # Plotting
@@ -88,9 +88,9 @@ sample_w <- function(alpha_0, N) {
 
 sample_tau <- function(mu, z, x, a_0, b_0, N) {
   tau <- c()
-  for (c in 1:length(mu)) {
+  for (c in 1:C) {
     summation <- 0
-    for (i in 1:length(x)) {
+    for (i in 1:N_SAMPLES) {
       summation <- summation + z[i, c] * (x[i] - mu[c])^2
     }
     a_new <- a_0 + N[c] / 2
@@ -115,15 +115,15 @@ sample_mu <- function(tau, z, x, tau_0, mu_0, N) {
 
 sample_z <- function(mu, tau, w, x) {
   z <- matrix(, nrow = length(x), ncol = length(w))
-  for (i in 1:length(x)) {
+  for (i in 1:N_SAMPLES) {
     prob <- c()
     summation <- 0
-    for (c in 1:length(mu)) {
+    for (c in 1:C) {
       summation <- summation + w[c] * dnorm(x[i], mu[c], sqrt(1 / tau[c]))
     }
     # avoid division by 0
     if (summation != 0) {
-      for (c in 1:length(mu)) {
+      for (c in 1:C) {
         prob <- c(prob, w[c] * dnorm(x[i], mu[c], sqrt(1 / tau[c])) / summation)
       }
     } else {
@@ -142,7 +142,7 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
   tau <- rgamma(C, shape = a_0, rate = b_0)
   mu <- rnorm(C, mu_0, sqrt(1 / tau_0))
   z <- matrix(, nrow = length(x), ncol = length(w))
-  for (i in 1:length(x)) {
+  for (i in 1:N_SAMPLES) {
     z[i, ] <- rmultinom(1, 1, w)
   }
 
