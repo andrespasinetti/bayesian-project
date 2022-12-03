@@ -46,14 +46,7 @@ h_real <- HMC(LENGTH, Q_real, H)
 #print(h_real)
 
 
-# Generating the gaussians of the mixture
-x <- seq(-20, 20, by = 0.001)
-norms <- data.frame(x)
-col_names <- c("x")
-norms <- c()
-for (i in 1:H) {
-  norms <- rbind(norms, dnorm(x, mu_real[i], sqrt(1 / tau_real[i])) * w_real[i])
-}
+
 
 # Sampling from the unknown distribution
 rmix <- function(h_real, mu_real, tau_real) {
@@ -63,18 +56,24 @@ rmix <- function(h_real, mu_real, tau_real) {
 d <- rmix(h_real, mu_real, tau_real)
 
 
-
 # Plotting the Hidden Markov Model and samples
-
 library(rgl)
-plot_HMM_samples <- function(x, d, h_real, LENGTH) {
+plot_HMM_samples <- function(x_seq, d, h_real, LENGTH) {
+  norms <- data.frame(x_seq)
+  col_names <- c("x_seq")
+  norms <- c()
+  for (i in 1:H) {
+    norms <- rbind(norms, dnorm(x_seq, mu_real[i], sqrt(1 / tau_real[i])))
+  }
+
   for (i in 1:LENGTH) {
-    plot3d(x, norms[h_real[i], ], rep(i, length(x)), type = "l", lwd = 4, col = h_real[i], zlim = c(1, LENGTH))
+    plot3d(x_seq, norms[h_real[i], ], rep(i, length(x)), type = "l", lwd = 4, col = h_real[i], zlim = c(1, LENGTH))
     plot3d(d[i], 0, i, size = 4, col = h_real[i], zlim = c(1, LENGTH))
   }
   #grid3d(c("x", "y+", "z"))
 }
-plot_HMM_samples(x, d, h_real, LENGTH)
+x_seq <- seq(min(d) - 2*max(tau_real), max(d)+ 2*max(tau_real), by = 0.001)
+plot_HMM_samples(x_seq, d, h_real, LENGTH)
 
 
 # Full conditionals
