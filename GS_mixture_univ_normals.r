@@ -34,11 +34,11 @@ x <- rmix(nsamples = nsamples, w_real, mu_real, tau_real)
 
 
 # Plotting
-plot_mixture <- function(x, w, mu, tau, title) {
-  norms <- data.frame(x)
-  col_names <- c("x")
+plot_mixture <- function(x_seq, w, mu, tau, title) {
+  norms <- data.frame(x_seq)
+  col_names <- c("x_seq")
   for (i in 1:C) {
-    norms <- cbind(norms, dnorm(x, mu[i], sqrt(1 / tau[i])) * w[i])
+    norms <- cbind(norms, dnorm(x_seq, mu[i], sqrt(1 / tau[i])) * w[i])
     col_names <- c(col_names, paste("norm", i, sep = ""))
   }
 
@@ -57,19 +57,19 @@ plot_mixture <- function(x, w, mu, tau, title) {
   line_colors <- rep(1, C + 1)
   line_colors[1] <- 2
   ggp <- ggplot(long_norms) + 
-        geom_line(aes(x, value, col = name, size = name)) + 
+        geom_line(aes(x_seq, value, col = name, size = name)) + 
         scale_size_manual(values = line_sizes) +
         scale_color_manual(values = line_colors) +
         ggtitle(title) +
         theme(plot.title = element_text(size = 20, face = "bold"))
 
-  # x <- data.frame(x)
+  # x_seq <- data.frame(x_seq)
   # ggp <- ggp +
-  #   geom_histogram(data = x, aes(x = x, y = after_stat(density)), alpha = 0.3,
+  #   geom_histogram(data = x_seq, aes(x_seq = x_seq, y = after_stat(density)), alpha = 0.3,
   #                 bins = 300, position = "identity", lwd = 0.2) +
   #   ggtitle("Unknown mixture of gaussians + samples")
 
-  # ggp <- x[[1]]
+  # ggp <- x_seq[[1]]
 
   x11(type = "cairo")
   plot(ggp)

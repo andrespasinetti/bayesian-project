@@ -67,7 +67,7 @@ plot_HMM_samples <- function(x_seq, d, h_real, LENGTH) {
   }
 
   for (i in 1:LENGTH) {
-    plot3d(x_seq, norms[h_real[i], ], rep(i, length(x)), type = "l", lwd = 4, col = h_real[i], zlim = c(1, LENGTH))
+    plot3d(x_seq, norms[h_real[i], ], rep(i, length(x_seq)), type = "l", lwd = 4, col = h_real[i], zlim = c(1, LENGTH))
     plot3d(d[i], 0, i, size = 4, col = h_real[i], zlim = c(1, LENGTH))
   }
   #grid3d(c("x", "y+", "z"))
