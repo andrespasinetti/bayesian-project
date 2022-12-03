@@ -7,17 +7,17 @@
 C <- 2 # number of possible hidden states
 alpha_0 <- runif(n = C, min = 1, max = 4)
 mu_0 <- 0
-tau_0 <- 0.002 # precision
+tau_0 <- 0.02 # precision
 a_0 <- 5
 b_0 <- 5
 
-LENGTH <- 1000 # length of the chain
+LENGTH <- 100 # length of the chain
 niter <- 200 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
-#w_real <- gtools::rdirichlet(1, alpha_0)
-w_real <- c(0.5, 0.5)
+w_real <- gtools::rdirichlet(1, alpha_0)
+#w_real <- c(0.5, 0.5)
 mu_real <- rnorm(C, mu_0, sqrt(1 / tau_0))
 tau_real <- rgamma(C, shape = a_0, rate = b_0)
 cat("w_real :", w_real, "\n")
@@ -44,7 +44,6 @@ HMC <- function(Q) {
   return(h)
 }
 h_real <- HMC(Q_real)
-#print(h_real)
 
 
 # Sampling from the unknown distribution
@@ -70,16 +69,16 @@ plot_HMM_samples <- function(x_seq, d, h_real) {
   }
   #grid3d(c("x", "y+", "z"))
 }
-x_seq <- seq(min(d) - 2*max(tau_real), max(d)+ 2*max(tau_real), by = 0.001)
-#plot_HMM_samples(x_seq, d, h_real)
+x_seq <- seq(min(d) - 2*max(sqrt(1/tau_real)), max(d)+ 2*max(sqrt(1/tau_real)), by = 0.001)
+plot_HMM_samples(x_seq, d, h_real)
 
 
 # Full conditionals
 sample_Q <- function(alpha_0, h) {
   Q <- matrix(, nrow = C, ncol = C)
   NN <- matrix(0, nrow = C, ncol = C)
-  for (z in 2:LENGTH) {
-    NN[h[z - 1], h[z]] <- NN[h[z - 1], h[z]] + 1
+  for (i in 2:LENGTH) {
+    NN[h[i - 1], h[i]] <- NN[h[i - 1], h[i]] + 1
   }
 
   for (i in 1:C) {
@@ -90,12 +89,7 @@ sample_Q <- function(alpha_0, h) {
 }
 
 
-sample_tau <- function(mu, h, x, a_0, b_0, N) {
-  z <- matrix(0, nrow = LENGTH, ncol = C)
-  for (i in 1:LENGTH) {
-    z[i, h[i]] <- 1
-  }
-
+sample_tau <- function(mu, z, x, a_0, b_0, N) {
   tau <- c()
   for (c in 1:C) {
     summation <- 0
@@ -135,7 +129,7 @@ sample_h <- function(d, Q, mu, tau) {
   for (t in 2:LENGTH) {
     for (r in 1:C) {
       for (s in 1:C) {
-        P[r, s, t] <- pi[t - 1, r] * Q[r, s] * dnorm(d[t], mu[s], tau[s])
+        P[r, s, t] <- exp(log(pi[t - 1, r]) + log(Q[r, s]) + log(dnorm(d[t], mu[s], sqrt(1 / tau[s]))))
       }
     }
     summation <- sum(P[, , t])
@@ -171,6 +165,8 @@ sample_h <- function(d, Q, mu, tau) {
 
 # Gibbs Sampler
 gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
+  #b_0 <- 50
+
   cat("\n\nGibbs Sampler\n")
   w <- gtools::rdirichlet(1, alpha_0)
   Q <- c()
@@ -178,6 +174,7 @@ gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
     Q <- rbind(Q, w)
   }
   tau <- rgamma(C, shape = a_0, rate = b_0)
+  print(tau)
   mu <- rnorm(C, mu_0, sqrt(1 / tau_0))
   h <- HMC(Q)
 
@@ -199,11 +196,12 @@ gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
       N <- c(N, sum(z[, c]))
     }
     Q <- sample_Q(alpha_0, h)
-    tau <- sample_tau(mu, h, d, a_0, b_0, N)
+    tau <- sample_tau(mu, z, d, a_0, b_0, N)
     mu <- sample_mu(tau, z, d, tau_0, mu_0, N)
     h <- sample_h(d, Q, mu, tau)
     mu_GS[i, ] <- mu
   }
+  print(Q)
   return(mu_GS)
 }
 
