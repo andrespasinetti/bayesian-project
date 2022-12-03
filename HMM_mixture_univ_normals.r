@@ -4,21 +4,22 @@
 
 
 # PARAMETERS
-H <- 2 # number of hidden states
-alpha_0 <- runif(n = H, min = 1, max = 4)
+C <- 2 # number of possible hidden states
+alpha_0 <- runif(n = C, min = 1, max = 4)
 mu_0 <- 0
-tau_0 <- 0.02 # precision
+tau_0 <- 0.002 # precision
 a_0 <- 5
 b_0 <- 5
 
-LENGTH <- 100 # length of the chain
-niter <- 100 # number of Gibbs Sampling iterations
+LENGTH <- 1000 # length of the chain
+niter <- 200 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
-w_real <- gtools::rdirichlet(1, alpha_0)
-mu_real <- rnorm(H, mu_0, sqrt(1 / tau_0))
-tau_real <- rgamma(H, shape = a_0, rate = b_0)
+#w_real <- gtools::rdirichlet(1, alpha_0)
+w_real <- c(0.5, 0.5)
+mu_real <- rnorm(C, mu_0, sqrt(1 / tau_0))
+tau_real <- rgamma(C, shape = a_0, rate = b_0)
 cat("w_real :", w_real, "\n")
 cat("mu_real :", mu_real, "\n")
 cat("tau_real :", tau_real, "\n")
@@ -27,7 +28,7 @@ cat("tau_real :", tau_real, "\n")
 # Transition probability matrix 
 # For finite mixture models, all rows are equal
 Q_real <- c()
-for (i in 1:H) {
+for (i in 1:C) {
   Q_real <- rbind(Q_real, w_real)
 }
 cat("\n Transition matrix\n")
@@ -35,14 +36,14 @@ print(Q_real)
 
 
 # Generating an Hidden Markov Chain
-HMC <- function(LENGTH, Q, H) {
+HMC <- function(Q) {
   h <- c(1)
   for (i in 2:LENGTH) {
-    h <- c(h, sample(1:H, prob = Q[h[length(h)], ], size = 1))
+    h <- c(h, sample(1:C, prob = Q[h[length(h)], ], size = 1))
   }
   return(h)
 }
-h_real <- HMC(LENGTH, Q_real, H)
+h_real <- HMC(Q_real)
 #print(h_real)
 
 
@@ -58,11 +59,10 @@ d <- rmix(h_real, mu_real, tau_real)
 
 # Plotting the Hidden Markov Model and samples
 library(rgl)
-plot_HMM_samples <- function(x_seq, d, h_real, LENGTH) {
+plot_HMM_samples <- function(x_seq, d, h_real) {
   norms <- data.frame(x_seq)
-  col_names <- c("x_seq")
   norms <- c()
-  for (i in 1:H) {
+  for (i in 1:C) {
     norms <- rbind(norms, dnorm(x_seq, mu_real[i], sqrt(1 / tau_real[i])))
   }
 
@@ -73,18 +73,18 @@ plot_HMM_samples <- function(x_seq, d, h_real, LENGTH) {
   #grid3d(c("x", "y+", "z"))
 }
 x_seq <- seq(min(d) - 2*max(tau_real), max(d)+ 2*max(tau_real), by = 0.001)
-plot_HMM_samples(x_seq, d, h_real, LENGTH)
+#plot_HMM_samples(x_seq, d, h_real)
 
 
 # Full conditionals
-sample_Q <- function(alpha_0, h, H) {
-  Q <- matrix(, nrow = H, ncol = H)
-  NN <- matrix(0, nrow = H, ncol = H)
-  for (z in 2:H) {
+sample_Q <- function(alpha_0, h) {
+  Q <- matrix(, nrow = C, ncol = C)
+  NN <- matrix(0, nrow = C, ncol = C)
+  for (z in 2:C) {
     NN[h[z-1], h[z]] <- NN[h[z-1], h[z]] + 1
   }
     
-  for (i in 1:H) {
+  for (i in 1:C) {
     Q[i, ] <- gtools::rdirichlet(1, alpha_0 + NN[i, ])
   }
 
@@ -92,16 +92,16 @@ sample_Q <- function(alpha_0, h, H) {
 }
 
 
-sample_tau <- function(mu, h, x, a_0, b_0, N, H, LENGTH) {
-  z <- matrix(0, nrow = LENGTH, ncol = H)
+sample_tau <- function(mu, h, x, a_0, b_0, N) {
+  z <- matrix(0, nrow = LENGTH, ncol = C)
   for (i in 1:LENGTH) {
     z[i, h[i]] <- 1
   }
 
   tau <- c()
-  for (c in 1:length(mu)) {
+  for (c in 1:C) {
     summation <- 0
-    for (i in 1:length(x)) {
+    for (i in 1:LENGTH) {
       summation <- summation + z[i, c] * (x[i] - mu[c])^2
     }
     tau <- c(tau, rgamma(1, shape = a_0 + N[c] / 2, rate = b_0 + summation / 2))
@@ -112,9 +112,9 @@ sample_tau <- function(mu, h, x, a_0, b_0, N, H, LENGTH) {
 
 sample_mu <- function(tau, z, x, tau_0, mu_0, N) {
   mu <- c()
+  for (c in 1:C) {
 
-  for (c in 1:length(tau)) {
-    # to prevent division by 0
+    # to avoid division by 0
     if (N[c] == 0) {
       N[c] <- 1
     }
@@ -128,62 +128,60 @@ sample_mu <- function(tau, z, x, tau_0, mu_0, N) {
 
 
 # Forward-Backward 
-sample_h <- function(d, Q, mu, tau, LENGTH, H) {
+sample_h <- function(d, Q, mu, tau) {
+
   # Forward recursion
-  P <- array(0, dim = c(H, H, LENGTH))
-  pi <- matrix(0, nrow = LENGTH, ncol = H)
+  P <- array(0, dim = c(C, C, LENGTH))
+  pi <- matrix(0, nrow = LENGTH, ncol = C)
   pi[1, 1] <- 1
   for (t in 2:LENGTH) {
-    for (r in 1:H) {
-      for (s in 1:H) {
-        P[r, s, t] <- pi[t - 1, r] * Q[r, s] * dnorm(d[t], mu[s], tau[s])        
+    for (r in 1:C) {
+      for (s in 1:C) {
+        P[r, s, t] <- pi[t - 1, r] * Q[r, s] * dnorm(d[t], mu[s], tau[s])
       }
     }
-    #print(sum(P[, , t]))
     summation <- sum(P[, , t])
+    
+    # to avoid division by 0
     if (summation == 0) {
-      P[, , t] <- matrix(1 / H^2, nrow = H, ncol = H)
+      P[, , t] <- matrix(1 / C^2, nrow = C, ncol = C)
     } else {
       P[, , t] <- P[, , t] / summation
     }
 
-    for (s in 1:H) {
+    for (s in 1:C) {
       pi[t, s] <-  sum(P[, s, t])
     }
   }
-  #print(P)
+
   # Backward recursion
-  h <- sample(1:H, prob = pi[LENGTH, ], size = 1)
+  h <- sample(1:C, prob = pi[LENGTH, ], size = 1)
   for (i in (LENGTH - 1):1) {
     if (sum(P[, h[length(h)], i + 1]) == 0) {
-      prob <- rep(1 / H, H)
+      prob <- rep(1 / C, C)
     } else {
       prob <- P[, h[length(h)], i + 1]
     }
     #print(P[, , i+1])
-    h <- c(sample(1:H, prob = prob, size = 1), h)
+    h <- c(sample(1:C, prob = prob, size = 1), h)
   }
   return(h)
 }
 
 
 # Gibbs Sampler
-gibbs <- function(d, niter, H, alpha_0, mu_0, tau_0, a_0, b_0, LENGTH) {
+gibbs <- function(d, niter, alpha_0, mu_0, tau_0, a_0, b_0) {
   cat("\n\nGibbs Sampler\n")
   w <- gtools::rdirichlet(1, alpha_0)
   Q <- c()
-  for (h in 1:H) {
+  for (h in 1:C) {
     Q <- rbind(Q, w)
   }
-  tau <- rgamma(H, shape = a_0, rate = b_0)
-  mu <- rnorm(H, mu_0, sqrt(1 / tau_0))
-  h <- HMC(LENGTH, Q, H)
-  print(Q)
-  #print(h)
-  print(mu)
-  print(tau)
+  tau <- rgamma(C, shape = a_0, rate = b_0)
+  mu <- rnorm(C, mu_0, sqrt(1 / tau_0))
+  h <- HMC(Q)
 
-  mu_GS <- matrix(, nrow = niter, ncol = H)
+  mu_GS <- matrix(, nrow = niter, ncol = C)
   mu_GS[1, ] <- mu
 
   cat(0, "/", niter, "\n")
@@ -192,27 +190,24 @@ gibbs <- function(d, niter, H, alpha_0, mu_0, tau_0, a_0, b_0, LENGTH) {
     if (i %% 50 == 0) {
       cat(i, "/", niter, "\n")
     }
-    z <- matrix(0, nrow = LENGTH, ncol = H)
+    z <- matrix(0, nrow = LENGTH, ncol = C)
     for (l in 1:LENGTH) {
       z[l, h[l]] <- 1
     }
     N <- c()
-    for (c in 1:H) {
+    for (c in 1:C) {
       N <- c(N, sum(z[, c]))
     }
-    Q <- sample_Q(alpha_0, h, H)
-    tau <- sample_tau(mu, h, d, a_0, b_0, N, H, LENGTH)
+    Q <- sample_Q(alpha_0, h)
+    tau <- sample_tau(mu, h, d, a_0, b_0, N)
     mu <- sample_mu(tau, z, d, tau_0, mu_0, N)
-    h <- sample_h(d, Q, mu, tau, LENGTH, H)
+    h <- sample_h(d, Q, mu, tau)
     mu_GS[i, ] <- mu
   }
-  #print(Q)
-  #print(h)
   return(mu_GS)
 }
 
-mu_GS <- gibbs(d, niter, H, alpha_0, mu_0, tau_0, a_0, b_0, LENGTH)
-#print(mu_GS)
-print(mu_real)
+mu_GS <- gibbs(d, niter, alpha_0, mu_0, tau_0, a_0, b_0)
+
 x11()
 matplot(mu_GS, main="Markov Chain for mu", type = 'l', xlim = c(0, niter), lty = 1, lwd = 2)
