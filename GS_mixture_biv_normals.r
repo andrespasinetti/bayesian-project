@@ -1,3 +1,5 @@
+# Implementing the following paper:
+# https://epub.jku.at/obvulihs/download/pdf/5554146?originalFilename=true
 
 library("mvtnorm")
 # PARAMETERS
