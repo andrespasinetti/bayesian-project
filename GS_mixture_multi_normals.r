@@ -9,11 +9,11 @@ p <- 2
 mu_0 <- rep(0, p)
 tau_0 <- diag(rep(0.02, p)) 
 a_0 <- 5
-b_0 <- diag(rep(0.05, p)) 
+b_0 <- diag(rep(0.5, p)) 
 
 
-N_SAMPLES <- 100 # number of samples
-niter <- 300 # number of Gibbs Sampling iterations
+N_SAMPLES <- 1000 # number of samples
+niter <- 20 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
@@ -118,18 +118,17 @@ sample_tau <- function(mu, z, x, c_0, C_0, N) {
   return(tau)
 }
 
+
 sample_mu <- function(tau, z, x, b_0, B_0, N) {
   mu <- matrix(, nrow = C, ncol = p)
   for (c in 1:C) {
     B_new <- solve(solve(B_0) + N[c] * tau[, , c])
-
-
     # avoid divison by 0
     if (N[c] == 0) {
       N[c] <- 1
     }
     b_new <- (B_new) %*% (solve(B_0) %*% b_0 + N[c] * (tau[, , c] %*% apply(x[z == c,], p, sum)/N[c]))
-    mu[c, ] <- rmvnorm(C, b_new, B_new)
+    mu[c, ] <- rmvnorm(1, b_new, B_new)
   }
   return(mu)
 }
@@ -150,7 +149,6 @@ sample_z <- function(mu, tau, w, x) {
     } else {
       prob <- runif(n = C, min = 0, max = 1)
     }
-    print("-----")
     z[i, ] <- rmultinom(1, 1, prob)
   }
   return(z)
@@ -187,7 +185,7 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
   cat("\nGibbs Sampling\n")
   cat(0, "/", niter, "\n")
   for (i in 1:niter) {
-    if (i %% 50 == 0) {
+    if (i %% 10 == 0) {
       cat(i, "/", niter, "\n")
     }
 
@@ -197,8 +195,8 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
     }
 
     k <- array(0, dim = N_SAMPLES)
-    for (i in 1:N_SAMPLES) {
-      k[i] <- which.max(z[i, ])
+    for (j in 1:N_SAMPLES) {
+      k[j] <- which.max(z[j, ])
     }
     z <- k
 
@@ -215,5 +213,12 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
 
 mu_GS <- gibbs(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0)
 print(mu_GS)
-x11()
-matplot(mu_GS, main="Markov Chain for mu", type = 'l', xlim = c(0, niter), lty = 1, lwd = 2)
+
+mu_PLOT <- array(, dim = c(C, niter, p))
+for ( i in 1:p ) {
+
+  mu_PLOT[, , i] <- mu_GS[, i, ]
+  x11()
+  matplot(t(mu_PLOT[, , i]), main="Markov Chain for mu", type = 'l', xlim = c(0, niter), lty = 1, lwd = 2)
+}
+
