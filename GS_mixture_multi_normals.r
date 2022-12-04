@@ -12,7 +12,7 @@ a_0 <- 5
 b_0 <- diag(rep(0.5, p)) 
 
 
-N_SAMPLES <- 1000 # number of samples
+N_SAMPLES <- 200 # number of samples
 niter <- 20 # number of Gibbs Sampling iterations
 
 
@@ -53,51 +53,6 @@ z_real <- unlist(z_real)
 x11()
 plot(x, type="p", col=z_real, pch=20)
 
-# Plotting
-plot_mixture <- function(x_seq, w, mu, tau, title) {
-  norms <- data.frame(x_seq)
-  col_names <- c("x_seq")
-  for (i in 1:C) {
-    norms <- cbind(norms, dnorm(x_seq, mu[i], sqrt(1 / tau[i])) * w[i])
-    col_names <- c(col_names, paste("norm", i, sep = ""))
-  }
-
-  norms_matrix <- data.matrix(norms[2:length(norms)])
-  mixture <- rowSums(norms_matrix)
-  norms <- cbind(norms, mixture)
-
-  col_names <- c(col_names, "mixture")
-  colnames(norms) <- col_names
-  library("tidyr")
-  long_norms <- pivot_longer(norms, cols = all_of(col_names[2:length(col_names)]))
-
-  library(ggplot2)
-  line_sizes <- rep(0.6, C + 1)
-  line_sizes[1] <- 2
-  line_colors <- rep(1, C + 1)
-  line_colors[1] <- 2
-  ggp <- ggplot(long_norms) + 
-        geom_line(aes(x_seq, value, col = name, size = name)) + 
-        scale_size_manual(values = line_sizes) +
-        scale_color_manual(values = line_colors) +
-        ggtitle(title) +
-        theme(plot.title = element_text(size = 20, face = "bold"))
-
-  # x_seq <- data.frame(x_seq)
-  # ggp <- ggp +
-  #   geom_histogram(data = x_seq, aes(x_seq = x_seq, y = after_stat(density)), alpha = 0.3,
-  #                 bins = 300, position = "identity", lwd = 0.2) +
-  #   ggtitle("Unknown mixture of gaussians + samples")
-
-  # ggp <- x_seq[[1]]
-
-  x11(type = "cairo")
-  plot(ggp)
-}
-#x_seq <- seq(min(x), max(x), by = 0.001)
-#title <- "Unknown mixture of gaussians"
-#plot_mixture(x_seq, w_real, mu_real, tau_real, title)
-
 
 # Full conditionals
 sample_w <- function(alpha_0, N) {
@@ -134,7 +89,7 @@ sample_mu <- function(tau, z, x, b_0, B_0, N) {
 }
 
 sample_z <- function(mu, tau, w, x) {
-  z <- matrix(, nrow = N_SAMPLES, ncol = C)
+  z <- array(dim = N_SAMPLES)
   for (i in 1:N_SAMPLES) {
     prob <- c()
     summation <- 0
@@ -149,7 +104,7 @@ sample_z <- function(mu, tau, w, x) {
     } else {
       prob <- runif(n = C, min = 0, max = 1)
     }
-    z[i, ] <- rmultinom(1, 1, prob)
+    z[i] <- sample(1:C, prob = prob, size = 1)
   }
   return(z)
 }
@@ -173,14 +128,25 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
   tau <- array(0, dim = c(p, p, C))
   tau[, , ]  <- rWishart(C, c_0, solve(C_0))
   mu <- rmvnorm(C, b_0, B_0)
-  z <- matrix(, nrow = N_SAMPLES, ncol = C)
+  z <- array(dim = N_SAMPLES)
   for (i in 1:N_SAMPLES) {
-    z[i, ] <- rmultinom(1, 1, w)
+    z[i] <- sample(1:C, prob = w, size = 1)
   }
 
   # Save the Markov Chain of mu
   mu_GS <- array(dim = c(C, p, niter))
   mu_GS[, , 1] <- mu
+
+  tau_GS <- array(dim = c(p, p, C, niter))
+  tau_GS[, , , 1] <- tau
+
+  w_GS <- array(dim = c(C, niter) )
+  w_GS[, 1] <- w
+
+
+    
+  z_GS <- array(dim = c(N_SAMPLES , niter))
+  z_GS[, 1] <- z
 
   cat("\nGibbs Sampling\n")
   cat(0, "/", niter, "\n")
@@ -189,16 +155,7 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
       cat(i, "/", niter, "\n")
     }
 
-    N <- c()
-    for (c in 1:C) {
-      N <- c(N, sum(z[, c]))
-    }
-
-    k <- array(0, dim = N_SAMPLES)
-    for (j in 1:N_SAMPLES) {
-      k[j] <- which.max(z[j, ])
-    }
-    z <- k
+    N <- as.data.frame(table(z))$Freq
 
     w <- sample_w(alpha_0, N)
     tau <- sample_tau(mu, z, x, c_0, C_0, N)
@@ -206,19 +163,23 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
     z <- sample_z(mu, tau, w, x)
 
     mu_GS[, , i] <- mu
+    tau_GS[, , , i] <- tau
+    w_GS[, i] <- w
+    z_GS[, i] <- z
   }
 
-  return(mu_GS)
+  return(list("mu_GS" = mu_GS, "tau_GS" = tau_GS, "w_GS" = w_GS, "z_GS" = z_GS))
 }
 
-mu_GS <- gibbs(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0)
-print(mu_GS)
-
+mix <- gibbs(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0)
 mu_PLOT <- array(, dim = c(C, niter, p))
+mu_GS <- mix$mu_GS
+
 for ( i in 1:p ) {
 
-  mu_PLOT[, , i] <- mu_GS[, i, ]
   x11()
-  matplot(t(mu_PLOT[, , i]), main="Markov Chain for mu", type = 'l', xlim = c(0, niter), lty = 1, lwd = 2)
+  matplot(t(mu_GS[, i, ]), main="Markov Chain for mu", type = 'l', xlim = c(0, niter), lty = 1, lwd = 2)
 }
-
+z_GS <- data.frame(mix[4])
+x11()
+plot(x, type="p", col=z_GS[, niter], pch=20)
