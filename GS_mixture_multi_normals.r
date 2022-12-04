@@ -12,8 +12,8 @@ a_0 <- 5
 b_0 <- diag(rep(0.5, p)) 
 
 
-N_SAMPLES <- 200 # number of samples
-niter <- 20 # number of Gibbs Sampling iterations
+N_SAMPLES <- 500 # number of samples
+niter <- 40 # number of Gibbs Sampling iterations
 
 
 # Defining the unknown mixture
@@ -172,7 +172,6 @@ gibbs <- function(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0) {
 }
 
 mix <- gibbs(x, niter, C, alpha_0, mu_0, tau_0, a_0, b_0)
-mu_PLOT <- array(, dim = c(C, niter, p))
 mu_GS <- mix$mu_GS
 
 for ( i in 1:p ) {
